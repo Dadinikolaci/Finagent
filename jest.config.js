@@ -7,4 +7,12 @@ module.exports = {
     './node_modules/react-native-url-polyfill/auto',
     './jest.setup.js'
   ],
+  globals: {
+    'ts-jest': {
+      babelConfig: true,
+    },
+  },
+  moduleNameMapper: {
+    '^@env$': '<rootDir>/.env.test',
+  },
 };
