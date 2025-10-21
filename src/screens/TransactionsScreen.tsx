@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, Alert } from 'react-native';
-import { List, Text, FAB, useTheme, ActivityIndicator } from 'react-native-paper';
-import { supabase, Transaction } from '../lib/supabase'; // Using supabase client
+import { List, Text, FAB, useTheme, ActivityIndicator, Title } from 'react-native-paper';
+import { supabase, Transaction } from '../lib/supabase';
 import AddTransactionModal from '../components/AddTransactionModal';
 
 const getCategoryIcon = (category: string) => {
@@ -12,6 +12,13 @@ const getCategoryIcon = (category: string) => {
   };
   return icons[category] || icons['Default'];
 };
+
+const EmptyState = () => (
+  <View style={styles.emptyContainer}>
+    <Title>Nema Transakcija</Title>
+    <Text>Dodajte svoju prvu transakciju klikom na '+' dugme.</Text>
+  </View>
+);
 
 const TransactionsScreen = () => {
   const theme = useTheme();
@@ -32,7 +39,6 @@ const TransactionsScreen = () => {
 
     if (error) {
       Alert.alert('Greška', 'Nije moguće učitati transakcije.');
-      console.error(error);
     } else {
       setTransactions(data);
     }
@@ -43,10 +49,8 @@ const TransactionsScreen = () => {
     const { error } = await supabase.from('transactions').insert([newTransaction]);
     if (error) {
       Alert.alert('Greška', 'Nije moguće dodati transakciju.');
-      console.error(error);
     } else {
-      Alert.alert('Uspeh', 'Transakcija je uspešno dodata.');
-      fetchTransactions(); // Refresh the list
+      fetchTransactions();
     }
     setModalVisible(false);
   };
@@ -84,6 +88,8 @@ const TransactionsScreen = () => {
         renderItem={renderTransaction}
         refreshing={loading}
         onRefresh={fetchTransactions}
+        ListEmptyComponent={<EmptyState />}
+        contentContainerStyle={transactions.length === 0 ? styles.emptyFlex : null}
       />
       <FAB
         style={styles.fab}
@@ -105,6 +111,8 @@ const styles = StyleSheet.create({
   fab: { position: 'absolute', margin: 16, right: 0, bottom: 0 },
   amountContainer: { justifyContent: 'center', alignItems: 'flex-end', paddingRight: 10 },
   dateText: { fontSize: 12, color: 'grey' },
+  emptyContainer: { justifyContent: 'center', alignItems: 'center' },
+  emptyFlex: { flex: 1 }
 });
 
 export default TransactionsScreen;

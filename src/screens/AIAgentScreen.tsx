@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { TextInput, Button, Card, Paragraph, useTheme, ActivityIndicator } from 'react-native-paper';
+import { TextInput, Button, Card, useTheme, ActivityIndicator } from 'react-native-paper';
+import Markdown from 'react-native-markdown-display';
 import { supabase } from '../lib/supabase';
 import { getOpenAIResponse } from '../lib/openai';
 
@@ -33,13 +34,10 @@ const AIAgentScreen = () => {
 
       const prompt = `
         Ti si stručni finansijski savetnik FinAgent. Analiziraj sledeće transakcije i odgovori na zahtev korisnika.
-
         Tvoja dva glavna zadatka su:
         1.  **Odgovaranje na pitanja:** Ako korisnik postavi pitanje (npr. "Koliko sam potrošio na hranu?"), daj kratak i tačan odgovor na osnovu podataka.
         2.  **Generisanje planova:** Ako korisnik zatraži plan (npr. "Napravi mi budžet za sledeći mesec" ili "Kako da uštedim 100€?"), kreiraj jasan, strukturiran plan. Koristi Markdown za naslove i liste. Plan mora biti realan i zasnovan na istoriji prihoda i rashoda korisnika.
-
         Transakcije: ${context}
-
         Zahtev korisnika: "${userMessage.text}"
       `;
 
@@ -89,7 +87,16 @@ const AIAgentScreen = () => {
     const isUser = item.sender === 'user';
     return (
       <Card style={[styles.messageCard, isUser ? styles.userMessage : styles.aiMessage, { backgroundColor: isUser ? theme.colors.primaryContainer : theme.colors.surfaceVariant }]}>
-        <Paragraph>{item.text}</Paragraph>
+        <Card.Content>
+          <Markdown style={{
+            body: { color: theme.colors.onSurfaceVariant, fontSize: 16 },
+            heading1: { color: theme.colors.onSurface, fontWeight: 'bold', marginTop: 10, marginBottom: 5 },
+            heading2: { color: theme.colors.onSurface, fontWeight: 'bold', marginTop: 8, marginBottom: 4 },
+            list_item: { marginBottom: 5 }
+          }}>
+            {item.text}
+          </Markdown>
+        </Card.Content>
       </Card>
     );
   };
@@ -119,14 +126,14 @@ const AIAgentScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  analysisButton: { marginHorizontal: 10, marginTop: 10 },
+  analysisButton: { marginHorizontal: 10, marginTop: 10, borderColor: '#7c4dff', borderWidth: 1 },
   messageList: { padding: 10 },
-  messageCard: { maxWidth: '80%', marginVertical: 5, padding: 5, borderRadius: 12 },
+  messageCard: { maxWidth: '85%', marginVertical: 5, padding: 2, borderRadius: 15 },
   userMessage: { alignSelf: 'flex-end' },
   aiMessage: { alignSelf: 'flex-start' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, borderTopWidth: 1, borderTopColor: '#ccc' },
-  input: { flex: 1, marginRight: 10 },
-  sendButton: { justifyContent: 'center' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, borderTopWidth: 1, backgroundColor: '#f0f0f0' },
+  input: { flex: 1, marginRight: 10, maxHeight: 100 },
+  sendButton: { justifyContent: 'center', height: 50 },
 });
 
 export default AIAgentScreen;

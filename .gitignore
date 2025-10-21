@@ -75,3 +75,4 @@ yarn-error.log
 
 # Environment variables
 .env
+\n# Keystore files\n*.keystore
