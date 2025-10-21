@@ -1,31 +1,53 @@
-import React from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { List, Text, FAB, useTheme } from 'react-native-paper';
-import { mockTransactions, Transaction } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList, Alert } from 'react-native';
+import { List, Text, FAB, useTheme, ActivityIndicator } from 'react-native-paper';
+import { supabase, Transaction } from '../lib/supabase'; // Using supabase client
 import AddTransactionModal from '../components/AddTransactionModal';
 
 const getCategoryIcon = (category: string) => {
   const icons: { [key: string]: string } = {
-    'Plata': 'cash-multiple', 'Bonus': 'cash-plus', 'Stanovanje': 'home-city',
-    'Hrana': 'food-fork-drink', 'Prevoz': 'train-car', 'Zabava': 'popcorn',
-    'Dugovi/Krediti': 'bank', 'Ušteda': 'piggy-bank', 'Zdravlje': 'hospital-box',
-    'Default': 'help-circle',
+    'Plata': 'cash-multiple', 'Bonus': 'cash-plus', 'Stanovanje': 'home-city', 'Hrana': 'food-fork-drink',
+    'Prevoz': 'train-car', 'Zabava': 'popcorn', 'Dugovi/Krediti': 'bank', 'Ušteda': 'piggy-bank',
+    'Zdravlje': 'hospital-box', 'Default': 'help-circle',
   };
   return icons[category] || icons['Default'];
 };
 
 const TransactionsScreen = () => {
   const theme = useTheme();
-  const [modalVisible, setModalVisible] = React.useState(false);
-  const [transactions, setTransactions] = React.useState<Transaction[]>(mockTransactions);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleAddTransaction = (newTransaction: Omit<Transaction, 'id' | 'date'>) => {
-    const transactionToAdd: Transaction = {
-      ...newTransaction,
-      id: Math.random().toString(), // Not a great ID, but fine for mock data
-      date: new Date().toISOString().split('T')[0], // Use current date
-    };
-    setTransactions(prevTransactions => [transactionToAdd, ...prevTransactions]);
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (error) {
+      Alert.alert('Greška', 'Nije moguće učitati transakcije.');
+      console.error(error);
+    } else {
+      setTransactions(data);
+    }
+    setLoading(false);
+  };
+
+  const handleAddTransaction = async (newTransaction: Omit<Transaction, 'id' | 'created_at'>) => {
+    const { error } = await supabase.from('transactions').insert([newTransaction]);
+    if (error) {
+      Alert.alert('Greška', 'Nije moguće dodati transakciju.');
+      console.error(error);
+    } else {
+      Alert.alert('Uspeh', 'Transakcija je uspešno dodata.');
+      fetchTransactions(); // Refresh the list
+    }
     setModalVisible(false);
   };
 
@@ -50,12 +72,18 @@ const TransactionsScreen = () => {
     );
   };
 
+  if (loading) {
+    return <ActivityIndicator animating={true} style={styles.loader} />;
+  }
+
   return (
     <View style={styles.container}>
       <FlatList
         data={transactions}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.id!.toString()}
         renderItem={renderTransaction}
+        refreshing={loading}
+        onRefresh={fetchTransactions}
       />
       <FAB
         style={styles.fab}
@@ -73,6 +101,7 @@ const TransactionsScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fab: { position: 'absolute', margin: 16, right: 0, bottom: 0 },
   amountContainer: { justifyContent: 'center', alignItems: 'flex-end', paddingRight: 10 },
   dateText: { fontSize: 12, color: 'grey' },

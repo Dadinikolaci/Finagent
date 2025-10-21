@@ -1,13 +1,16 @@
-import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Modal, Portal, Text, Button, TextInput, RadioButton, useTheme } from 'react-native-paper';
 import RNPickerSelect from 'react-native-picker-select';
-import { TransactionType, Transaction } from '../data/mockData';
+import DatePicker from 'react-native-date-picker';
+import { Transaction } from '../lib/supabase';
+
+type TransactionPayload = Omit<Transaction, 'id' | 'created_at'>;
 
 interface AddTransactionModalProps {
   visible: boolean;
   onDismiss: () => void;
-  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'date'>) => void;
+  onAddTransaction: (transaction: TransactionPayload) => void;
 }
 
 const categories = [
@@ -16,10 +19,12 @@ const categories = [
 
 const AddTransactionModal = ({ visible, onDismiss, onAddTransaction }: AddTransactionModalProps) => {
   const theme = useTheme();
-  const [amount, setAmount] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [type, setType] = React.useState<TransactionType>('expense');
-  const [category, setCategory] = React.useState<string | null>(null);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState<Transaction['type']>('expense');
+  const [category, setCategory] = useState<string | null>(null);
+  const [date, setDate] = useState(new Date());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const handleAdd = () => {
     if (!amount || !category || !description) {
@@ -27,11 +32,12 @@ const AddTransactionModal = ({ visible, onDismiss, onAddTransaction }: AddTransa
       return;
     }
 
-    const newTransaction = {
+    const newTransaction: TransactionPayload = {
       amount: parseFloat(amount),
       category,
       description,
       type,
+      date: date.toISOString().split('T')[0], // Format to 'YYYY-MM-DD'
     };
     onAddTransaction(newTransaction);
     // Reset state and dismiss
@@ -39,6 +45,7 @@ const AddTransactionModal = ({ visible, onDismiss, onAddTransaction }: AddTransa
     setDescription('');
     setCategory(null);
     setType('expense');
+    setDate(new Date());
     onDismiss();
   };
 
@@ -60,7 +67,7 @@ const AddTransactionModal = ({ visible, onDismiss, onAddTransaction }: AddTransa
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.container, {backgroundColor: theme.colors.surface}]}>
         <Text style={styles.title}>Dodaj novu transakciju</Text>
 
-        <RadioButton.Group onValueChange={newValue => setType(newValue as TransactionType)} value={type}>
+        <RadioButton.Group onValueChange={newValue => setType(newValue as Transaction['type'])} value={type}>
           <View style={styles.radioContainer}>
             <View style={styles.radioItem}><Text>Rashod</Text><RadioButton value="expense" /></View>
             <View style={styles.radioItem}><Text>Prihod</Text><RadioButton value="income" /></View>
@@ -74,6 +81,31 @@ const AddTransactionModal = ({ visible, onDismiss, onAddTransaction }: AddTransa
             items={categories}
             placeholder={{ label: "Izaberi kategoriju...", value: null }}
             style={pickerSelectStyles}
+        />
+
+        <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+          <TextInput
+            label="Datum"
+            value={date.toLocaleDateString()}
+            editable={false}
+            mode="outlined"
+            style={styles.input}
+            right={<TextInput.Icon icon="calendar"/>}
+          />
+        </TouchableOpacity>
+
+        <DatePicker
+          modal
+          open={datePickerOpen}
+          date={date}
+          mode="date"
+          onConfirm={(selectedDate) => {
+            setDatePickerOpen(false);
+            setDate(selectedDate);
+          }}
+          onCancel={() => {
+            setDatePickerOpen(false);
+          }}
         />
 
         <TextInput label="Opis" value={description} onChangeText={setDescription} mode="outlined" style={styles.input} />
@@ -93,5 +125,6 @@ const styles = StyleSheet.create({
   radioContainer: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 20 },
   radioItem: { flexDirection: 'row', alignItems: 'center' }
 });
+
 
 export default AddTransactionModal;
