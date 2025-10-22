@@ -1,5 +1,10 @@
 import 'react-native-gesture-handler/jestSetup';
 
+// Mock AsyncStorage
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
+
 // Mock React Native modules
 jest.mock('react-native', () => {
   const rn = jest.requireActual('react-native');
@@ -16,17 +21,9 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-// Mock openai library to prevent actual API calls during tests
+// Mock openai library
 jest.mock('openai', () => {
-    return jest.fn().mockImplementation(() => {
-      return {
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{ message: { content: 'Ovo je testni odgovor od AI Agenta.' } }],
-            }),
-          },
-        },
-      };
-    });
+    return jest.fn().mockImplementation(() => ({
+      chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'Test response.' } }] }) } }
+    }));
 });

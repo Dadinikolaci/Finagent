@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, Alert } from 'react-native';
 import { List, Text, FAB, useTheme, ActivityIndicator, Title } from 'react-native-paper';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase, Transaction } from '../lib/supabase';
 import AddTransactionModal from '../components/AddTransactionModal';
 
@@ -13,12 +14,7 @@ const getCategoryIcon = (category: string) => {
   return icons[category] || icons['Default'];
 };
 
-const EmptyState = () => (
-  <View style={styles.emptyContainer}>
-    <Title>Nema Transakcija</Title>
-    <Text>Dodajte svoju prvu transakciju klikom na '+' dugme.</Text>
-  </View>
-);
+const EmptyState = () => ( <View style={styles.loader}><Title>Nema Transakcija</Title><Text>Dodajte svoju prvu transakciju klikom na '+' dugme.</Text></View> );
 
 const TransactionsScreen = () => {
   const theme = useTheme();
@@ -26,17 +22,9 @@ const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
   const fetchTransactions = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('date', { ascending: false });
-
+    const { data, error } = await supabase.from('transactions').select('*').order('date', { ascending: false });
     if (error) {
       Alert.alert('Greška', 'Nije moguće učitati transakcije.');
     } else {
@@ -44,6 +32,8 @@ const TransactionsScreen = () => {
     }
     setLoading(false);
   };
+
+  useFocusEffect(useCallback(() => { fetchTransactions(); }, []));
 
   const handleAddTransaction = async (newTransaction: Omit<Transaction, 'id' | 'created_at'>) => {
     const { error } = await supabase.from('transactions').insert([newTransaction]);
@@ -55,10 +45,18 @@ const TransactionsScreen = () => {
     setModalVisible(false);
   };
 
+  const openModal = () => {
+    try {
+      setModalVisible(true);
+    } catch (error) {
+      console.error("Error opening modal:", error);
+      Alert.alert("Greška", "Nije moguće otvoriti prozor za dodavanje transakcije. Proverite da li su sve zavisnosti ispravno instalirane.");
+    }
+  };
+
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const isExpense = item.type === 'expense';
     const amountColor = isExpense ? theme.colors.error : 'green';
-
     return (
       <List.Item
         title={item.category}
@@ -66,9 +64,7 @@ const TransactionsScreen = () => {
         left={props => <List.Icon {...props} icon={getCategoryIcon(item.category)} />}
         right={() => (
           <View style={styles.amountContainer}>
-            <Text style={{ color: amountColor, fontWeight: 'bold' }}>
-              {isExpense ? '-' : '+'}{item.amount.toFixed(2)} €
-            </Text>
+            <Text style={{ color: amountColor, fontWeight: 'bold' }}>{isExpense ? '-' : '+'}{item.amount.toFixed(2)} €</Text>
             <Text style={styles.dateText}>{item.date}</Text>
           </View>
         )}
@@ -76,9 +72,7 @@ const TransactionsScreen = () => {
     );
   };
 
-  if (loading) {
-    return <ActivityIndicator animating={true} style={styles.loader} />;
-  }
+  if (loading) { return <ActivityIndicator animating={true} style={styles.loader} />; }
 
   return (
     <View style={styles.container}>
@@ -86,21 +80,17 @@ const TransactionsScreen = () => {
         data={transactions}
         keyExtractor={item => item.id!.toString()}
         renderItem={renderTransaction}
-        refreshing={loading}
-        onRefresh={fetchTransactions}
         ListEmptyComponent={<EmptyState />}
         contentContainerStyle={transactions.length === 0 ? styles.emptyFlex : null}
       />
-      <FAB
-        style={styles.fab}
-        icon="plus"
-        onPress={() => setModalVisible(true)}
-      />
-      <AddTransactionModal
-        visible={modalVisible}
-        onDismiss={() => setModalVisible(false)}
-        onAddTransaction={handleAddTransaction}
-      />
+      <FAB style={styles.fab} icon="plus" onPress={openModal} />
+      {modalVisible && (
+        <AddTransactionModal
+            visible={modalVisible}
+            onDismiss={() => setModalVisible(false)}
+            onAddTransaction={handleAddTransaction}
+        />
+      )}
     </View>
   );
 };
@@ -111,7 +101,6 @@ const styles = StyleSheet.create({
   fab: { position: 'absolute', margin: 16, right: 0, bottom: 0 },
   amountContainer: { justifyContent: 'center', alignItems: 'flex-end', paddingRight: 10 },
   dateText: { fontSize: 12, color: 'grey' },
-  emptyContainer: { justifyContent: 'center', alignItems: 'center' },
   emptyFlex: { flex: 1 }
 });
 

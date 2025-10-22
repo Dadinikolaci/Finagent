@@ -7,6 +7,7 @@ import DashboardScreen from '../screens/DashboardScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
 import BudgetsScreen from '../screens/BudgetsScreen';
 import AIAgentScreen from '../screens/AIAgentScreen';
+import SettingsScreen from '../screens/SettingsScreen'; // Import the new screen
 
 const Tab = createBottomTabNavigator();
 
@@ -26,6 +27,8 @@ const AppNavigator = () => {
               iconName = focused ? 'wallet' : 'wallet-outline';
             } else if (route.name === 'AI Agent') {
               iconName = focused ? 'robot-happy' : 'robot-happy-outline';
+            } else if (route.name === 'Podešavanja') {
+              iconName = focused ? 'cog' : 'cog-outline';
             }
 
             return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
@@ -36,6 +39,7 @@ const AppNavigator = () => {
         <Tab.Screen name="Transakcije" component={TransactionsScreen} />
         <Tab.Screen name="Budžeti" component={BudgetsScreen} />
         <Tab.Screen name="AI Agent" component={AIAgentScreen} />
+        <Tab.Screen name="Podešavanja" component={SettingsScreen} />
       </Tab.Navigator>
     </NavigationContainer>
   );
