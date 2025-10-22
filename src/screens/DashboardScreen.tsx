@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, Dimensions, ScrollView } from 'react-native';
-import { Card, Title, Paragraph, useTheme, Text, ActivityIndicator, Button } from 'react-native-paper';
+import { Card, Title, Paragraph, useTheme, Text, ActivityIndicator, Button, Avatar } from 'react-native-paper';
 import { PieChart } from 'react-native-chart-kit';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -10,15 +10,8 @@ const screenWidth = Dimensions.get('window').width;
 const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
     <View style={styles.loader}>
         <Title style={{textAlign: 'center'}}>Greška pri učitavanju</Title>
-        <Paragraph style={styles.errorText}>
-            Nije moguće učitati podatke. Proverite vašu internet konekciju.
-        </Paragraph>
-        <Paragraph style={styles.errorText}>
-            Takođe, proverite da li su Row Level Security (RLS) polise u vašoj Supabase bazi ispravno podešene da dozvoljavaju 'select' operacije.
-        </Paragraph>
-        <Button mode="contained" onPress={onRetry} style={styles.retryButton}>
-            Pokušaj ponovo
-        </Button>
+        <Paragraph style={styles.errorText}>Nije moguće učitati podatke. Proverite vašu internet konekciju i RLS polise u Supabase-u.</Paragraph>
+        <Button mode="contained" onPress={onRetry} style={styles.retryButton}>Pokušaj ponovo</Button>
     </View>
 );
 
@@ -35,12 +28,7 @@ const DashboardScreen = () => {
         setError(null);
         const { data: transactions, error: dbError } = await supabase.from('transactions').select('*');
 
-        if (dbError) {
-            console.error("Supabase error:", dbError);
-            setError(dbError.message);
-            setLoading(false);
-            return;
-        }
+        if (dbError) { setError(dbError.message); setLoading(false); return; }
 
         const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
         const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -53,8 +41,9 @@ const DashboardScreen = () => {
             return acc;
         }, {});
 
+        const chartColors = ['#7c4dff', '#00bcd4', '#ffeb3b', '#ff9800', '#e91e63', '#4caf50'];
         const pieData = Object.keys(expenseByCategory).map((key, index) => ({
-            name: key, amount: expenseByCategory[key], color: `hsl(${(index * 60) % 360}, 70%, 50%)`,
+            name: key, amount: expenseByCategory[key], color: chartColors[index % chartColors.length],
             legendFontColor: theme.colors.text, legendFontSize: 12,
         }));
         setChartData(pieData);
@@ -63,30 +52,24 @@ const DashboardScreen = () => {
 
     useFocusEffect(useCallback(() => { fetchData(); }, []));
 
-    const chartConfig = {
-        backgroundGradientFrom: theme.colors.background, backgroundGradientTo: theme.colors.background,
-        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    };
-
     if (loading) { return <ActivityIndicator animating={true} style={styles.loader} />; }
     if (error) { return <ErrorState onRetry={fetchData} />; }
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={{paddingBottom: 20}}>
-            <Card style={styles.card}>
+            <Card style={styles.card} elevation={4}>
                 <Card.Content>
-                    <Title>Pregled Stanja</Title>
-                    <Paragraph>Ukupni prihodi: <Text style={styles.incomeText}>{totalIncome.toFixed(2)} €</Text></Paragraph>
-                    <Paragraph>Ukupni rashodi: <Text style={styles.expenseText}>{totalExpense.toFixed(2)} €</Text></Paragraph>
-                    <Title style={styles.balanceText}>Trenutno stanje: {(totalIncome - totalExpense).toFixed(2)} €</Title>
+                    <View style={styles.summaryItem}><Avatar.Icon icon="arrow-up-bold-circle" size={40} color={theme.colors.success} style={styles.avatar}/><View><Paragraph>Ukupni prihodi</Paragraph><Title style={{color: theme.colors.success}}>{totalIncome.toFixed(2)} €</Title></View></View>
+                    <View style={styles.summaryItem}><Avatar.Icon icon="arrow-down-bold-circle" size={40} color={theme.colors.error} style={styles.avatar}/><View><Paragraph>Ukupni rashodi</Paragraph><Title style={{color: theme.colors.error}}>{totalExpense.toFixed(2)} €</Title></View></View>
+                    <View style={styles.summaryItem}><Avatar.Icon icon="scale-balance" size={40} color={theme.colors.primary} style={styles.avatar}/><View><Paragraph>Trenutno stanje</Paragraph><Title style={{color: theme.colors.primary}}>{(totalIncome - totalExpense).toFixed(2)} €</Title></View></View>
                 </Card.Content>
             </Card>
 
-            <Card style={styles.card}>
+            <Card style={styles.card} elevation={4}>
                 <Card.Content>
                     <Title>Raspodela Troškova</Title>
                     {chartData.length > 0 ? (
-                        <PieChart data={chartData} width={screenWidth - 40} height={220} chartConfig={chartConfig}
+                        <PieChart data={chartData} width={screenWidth - 40} height={220} chartConfig={{color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`}}
                             accessor={"amount"} backgroundColor={"transparent"} paddingLeft={"15"} absolute />
                     ) : ( <Text>Nema troškova za prikaz.</Text> )}
                 </Card.Content>
@@ -98,10 +81,9 @@ const DashboardScreen = () => {
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 10 },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    card: { marginVertical: 8 },
-    incomeText: { color: 'green', fontWeight: 'bold' },
-    expenseText: { color: 'red', fontWeight: 'bold' },
-    balanceText: { marginTop: 10, fontWeight: 'bold' },
+    card: { marginVertical: 8, borderRadius: 12 },
+    summaryItem: { flexDirection: 'row', alignItems: 'center', marginVertical: 10 },
+    avatar: { backgroundColor: 'transparent', marginRight: 15 },
     errorText: { textAlign: 'center', marginVertical: 10, paddingHorizontal: 20 },
     retryButton: { marginTop: 20 },
 });
